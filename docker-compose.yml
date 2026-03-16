@@ -1,0 +1,61 @@
+# docker-compose.yml
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: urlshortener
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5434:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6380:6379'
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - '3333:3333'
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/urlshortener
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PORT: 3333
+      BASE_URL: http://localhost:3333
+      SLUG_LENGTH: 6
+      CACHE_TTL_SECONDS: 86400
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - '5173:80'
+    environment:
+      VITE_API_URL: http://localhost:3333
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:

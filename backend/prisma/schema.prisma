@@ -1,0 +1,32 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Url {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  originalUrl String
+  title       String?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  clicks      Click[]
+}
+
+model Click {
+  id        String   @id @default(cuid())
+  urlId     String
+  url       Url      @relation(fields: [urlId], references: [id], onDelete: Cascade)
+  device    String   // desktop | mobile | tablet
+  country   String?
+  referrer  String?
+  createdAt DateTime @default(now())
+
+  @@index([urlId, createdAt])
+  @@index([urlId, device])
+}
